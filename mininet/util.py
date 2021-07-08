@@ -509,6 +509,12 @@ def rlimitTestAndSet( name, limit ):
         hardLimit = hard if limit < hard else limit
         setrlimit( name, ( limit, hardLimit ) )
 
+def inDocker():
+    with open( "/proc/1/cgroup", 'r' ) as readFile:
+        if not re.search("3:cpu,cpuacct:/\n", readFile.read()):
+            return True
+    return False
+
 def fixLimits():
     "Fix ridiculously small resource limits."
     debug( "*** Setting resource limits\n" )
@@ -517,24 +523,27 @@ def fixLimits():
         rlimitTestAndSet( RLIMIT_NOFILE, 16384 )
         # Increase open file limit
         sysctlTestAndSet( 'fs.file-max', 10000 )
-        # Increase network buffer space
-        sysctlTestAndSet( 'net.core.wmem_max', 16777216 )
-        sysctlTestAndSet( 'net.core.rmem_max', 16777216 )
         sysctlTestAndSet( 'net.ipv4.tcp_rmem', '10240 87380 16777216' )
         sysctlTestAndSet( 'net.ipv4.tcp_wmem', '10240 87380 16777216' )
-        sysctlTestAndSet( 'net.core.netdev_max_backlog', 5000 )
-        # Increase arp cache size
-        sysctlTestAndSet( 'net.ipv4.neigh.default.gc_thresh1', 4096 )
-        sysctlTestAndSet( 'net.ipv4.neigh.default.gc_thresh2', 8192 )
-        sysctlTestAndSet( 'net.ipv4.neigh.default.gc_thresh3', 16384 )
-        # Increase routing table size
-        sysctlTestAndSet( 'net.ipv4.route.max_size', 32768 )
         # Increase number of PTYs for nodes
         sysctlTestAndSet( 'kernel.pty.max', 20000 )
+
+        # These are not available in docker containers
+        if not inDocker():
+            # Increase network buffer space
+            sysctlTestAndSet( 'net.core.wmem_max', 16777216 )
+            sysctlTestAndSet( 'net.core.rmem_max', 16777216 )
+            sysctlTestAndSet( 'net.core.netdev_max_backlog', 5000 )
+            # Increase arp cache size
+            sysctlTestAndSet( 'net.ipv4.neigh.default.gc_thresh1', 4096 )
+            sysctlTestAndSet( 'net.ipv4.neigh.default.gc_thresh2', 8192 )
+            sysctlTestAndSet( 'net.ipv4.neigh.default.gc_thresh3', 16384 )
+            # Increase routing table size
+            sysctlTestAndSet( 'net.ipv4.route.max_size', 32768 )
     # pylint: disable=broad-except
-    except Exception:
+    except Exception as error:
         warn( "*** Error setting resource limits. "
-              "Mininet's performance may be affected.\n" )
+              "Mininet's performance may be affected.\n" + str(error))
     # pylint: enable=broad-except
 
 
