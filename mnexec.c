@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
             setsid();
             break;
         case 'n':
-            /* run in network and mount namespaces */
-            if (unshare(CLONE_NEWNET|CLONE_NEWNS) == -1) {
+            /* run in network, mount and hostname namespaces */
+            if (unshare(CLONE_NEWNET|CLONE_NEWNS|CLONE_NEWUTS) == -1) {
                 perror("unshare");
                 return 1;
             }
